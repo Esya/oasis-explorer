@@ -3,11 +3,12 @@ package scanners
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"oasisTracker/common/log"
 	"oasisTracker/conf"
 	"oasisTracker/dao"
 	"oasisTracker/dmodels"
+
+	"go.uber.org/zap"
 )
 
 type Watcher struct {
@@ -89,19 +90,24 @@ func (m *Watcher) Run() error {
 }
 
 func (m *Watcher) addReSyncTask(currentHeight int64) error {
-	task, _, err := m.dao.GetLastTask()
+	task, isFound, err := m.dao.GetLastTask()
 	if err != nil {
 		return fmt.Errorf("GetLastTask error: %s", err)
 	}
 
-	lastBlock, err := m.parser.dao.GetLastBlock()
-	if err != nil {
-		return fmt.Errorf("GetLastBlock error: %s", err)
-	}
+	var startHeight uint64
+	if !isFound {
+		startHeight = m.cfg.Scanner.StartHeight
+	} else {
+		lastBlock, err := m.parser.dao.GetLastBlock()
+		if err != nil {
+			return fmt.Errorf("GetLastBlock error: %s", err)
+		}
 
-	startHeight := task.EndHeight + 1
-	if lastBlock.Height > startHeight {
-		startHeight = lastBlock.Height + 1
+		startHeight := task.EndHeight + 1
+		if lastBlock.Height > startHeight {
+			startHeight = lastBlock.Height + 1
+		}
 	}
 
 	//Blocks sync
